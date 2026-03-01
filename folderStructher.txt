@@ -1,0 +1,25 @@
+grow-business/
+├─ backend/
+│  ├─ config/         # DB & env config
+│  ├─ controllers/    # Logic for routes
+│  ├─ models/         # Mongoose schemas
+│  ├─ routes/         # API routes
+│  ├─ middleware/     # Auth & security middleware
+│  ├─ server.js       # Entry point
+├─ frontend/
+│  ├─ public/
+│  ├─ src/
+│  │  ├─ components/  # Buttons, cards, forms
+│  │  ├─ pages/       # Dashboard, Profile, Chat, etc
+│  │  ├─ context/     # Auth context
+│  │  ├─ utils/       # Axios setup, helpers
+│  │  ├─ App.js
+│  │  ├─ index.js
+├─ .env
+├─ package.json
+
+
+
+
+
+Schemas → Auth → Campaign → Influencer Flow → AI → Chat → Analytics → Polish
