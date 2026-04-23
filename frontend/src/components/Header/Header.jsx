@@ -61,11 +61,11 @@ const Header = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className="fixed top-0 left-0 right-0 z-[100] py-4 bg-[#0f1121]/90 border-b border-white/5 shadow-2xl backdrop-blur-xl"
-      style={{ fontFamily: '"Inter", sans-serif' }} // Sabse professional font
+      style={{ fontFamily: '"Inter", sans-serif' }}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
         
-        {/* LOGO */}
+        {/* LOGO - cursor-pointer added */}
         <Link to="/" className="flex items-center gap-3 group cursor-pointer">
           <motion.div 
             animate={{ rotate: 360 }}
@@ -80,10 +80,10 @@ const Header = () => {
           </div>
         </Link>
 
-        {/* DESKTOP NAV */}
+        {/* DESKTOP NAV - cursor-pointer ensured by Link */}
         <div className="hidden lg:flex items-center gap-10">
           {user && navLinks.map((link) => (
-            <Link key={link.name} to={link.path} className="relative group">
+            <Link key={link.name} to={link.path} className="relative group cursor-pointer">
               <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${
                 location.pathname === link.path ? 'text-[#42C8F5]' : 'text-slate-400 group-hover:text-white'
               }`}>
@@ -101,11 +101,12 @@ const Header = () => {
           <AnimatePresence mode="wait">
             {user ? (
               <div className="relative" ref={menuRef}>
+                {/* Profile Button - cursor-pointer added */}
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="relative group p-[1px] rounded-full bg-gradient-to-tr from-[#42C8F5]/50 to-transparent"
+                  className="relative group p-[1px] rounded-full bg-gradient-to-tr from-[#42C8F5]/50 to-transparent cursor-pointer"
                 >
                   <div className="w-10 h-10 rounded-full bg-[#0f1121] flex items-center justify-center border border-white/10 group-hover:border-[#42C8F5]/50 transition-all overflow-hidden">
                     <span className="text-[#42C8F5] font-bold text-xs uppercase tracking-widest">
@@ -123,7 +124,6 @@ const Header = () => {
                       exit={{ opacity: 0, y: 10, scale: 0.98 }}
                       className="absolute right-0 mt-5 w-64 bg-[#111427] border border-white/10 rounded-[20px] shadow-[0_30px_60px_rgba(0,0,0,0.6)] backdrop-blur-3xl z-[110] overflow-hidden"
                     >
-                      {/* Header Section */}
                       <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02]">
                         <h4 className="text-white font-bold text-sm tracking-tight truncate leading-tight">
                           {user.name || 'User'}
@@ -134,19 +134,20 @@ const Header = () => {
                         </div>
                       </div>
 
-                      {/* Menu List */}
                       <div className="p-2">
+                        {/* Profile Link - cursor-pointer added */}
                         <button 
                           onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group"
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer"
                         >
                           <User size={16} className="text-slate-400 group-hover:text-[#42C8F5] transition-colors" />
                           <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white uppercase tracking-widest">Profile</span>
                         </button>
 
+                        {/* Dashboard Link - cursor-pointer added */}
                         <button 
                           onClick={() => { navigate('/dashboard'); setIsUserMenuOpen(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group"
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group cursor-pointer"
                         >
                           <LayoutDashboard size={16} className="text-slate-400 group-hover:text-[#42C8F5] transition-colors" />
                           <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white uppercase tracking-widest">Dashboard</span>
@@ -154,9 +155,10 @@ const Header = () => {
 
                         <div className="my-2 h-[1px] bg-white/5 mx-2" />
 
+                        {/* Logout Button - cursor-pointer added */}
                         <button 
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-all group"
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-all group cursor-pointer"
                         >
                           <LogOut size={16} />
                           <span className="text-[11px] font-semibold uppercase tracking-widest">Logout</span>
@@ -167,18 +169,20 @@ const Header = () => {
                 </AnimatePresence>
               </div>
             ) : (
+              /* Sign In Button - cursor-pointer added */
               <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => navigate('/login')}
-                className="bg-[#42C8F5] text-[#0f1121] px-7 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(66,200,245,0.3)]"
+                className="bg-[#42C8F5] text-[#0f1121] px-7 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(66,200,245,0.3)] cursor-pointer"
               >
                 Sign In
               </motion.button>
             )}
           </AnimatePresence>
 
-          <button className="lg:hidden text-white" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          {/* Mobile Menu Button - cursor-pointer added */}
+          <button className="lg:hidden text-white cursor-pointer" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>

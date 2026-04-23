@@ -1,127 +1,160 @@
 const Influencer = require('../models/Influencer');
 const { scrapeTikTokDeep, searchInfluencersByKeyword } = require('../scrapers/tiktokScraper');
+const { analyzeInfluencer } = require('../services/aiService');
 
-/**
- * FEATURE 1: Smart Sync
- * Data refresh logic with 24-hour rule
- */
+// ── Helper: AI analyze + save to DB ──────────────────────────────────
+const analyzeAndSave = async (rawData, niche, userId) => {
+    const aiData = await analyzeInfluencer(
+        {
+            nickname:        rawData.nickname,
+            follower_count:  rawData.follower_count,
+            engagement_rate: rawData.engagement_rate,
+            total_videos:    rawData.total_videos,
+            platform:        rawData.platform || 'TikTok',
+            niche:           rawData.niche || niche,
+            profile_url:     rawData.profile_url,
+        },
+        { niche }
+    );
+
+    const finalScore = aiData?.score || aiData?.ai_score || 0;
+
+    const saved = await Influencer.findOneAndUpdate(
+        { profile_url: rawData.profile_url },
+        {
+            ...rawData,
+            platform:     'TikTok',
+            niche:        niche || rawData.niche,
+            ai_score:     finalScore,
+            sentiment:    aiData?.sentiment  || 'Neutral',
+            brand_fit:    aiData?.brand_fit  || niche || 'General',
+            ai_summary:   aiData?.summary    || 'Analysis complete.',
+            last_updated: Date.now(),
+            // ✅ createdBy — jo user ne search kiya usi ka ID
+            ...(userId && { createdBy: userId }),
+        },
+        { upsert: true, new: true }
+    );
+
+    return saved;
+};
+
+// ── Internal Search for Campaign Dispatcher ───────────────────────────
+exports.internalSearch = async (niche, userId) => {
+    try {
+        console.log(`🎯 [TikTok Internal Search] Niche: ${niche}`);
+        const usernames = await searchInfluencersByKeyword(niche);
+        if (!usernames || usernames.length === 0) return [];
+
+        const results = [];
+        for (const user of usernames.slice(0, 5)) {
+            const cleanUser = user.toLowerCase().trim();
+
+            let influencer = await Influencer.findOne({ profile_username: cleanUser });
+
+            if (influencer && influencer.ai_score > 0) {
+                // Already analyzed — update createdBy agar missing ho
+                if (!influencer.createdBy && userId) {
+                    influencer = await Influencer.findByIdAndUpdate(
+                        influencer._id,
+                        { createdBy: userId },
+                        { new: true }
+                    );
+                }
+                results.push(influencer);
+            } else {
+                const freshData = await scrapeTikTokDeep(cleanUser);
+                if (freshData) {
+                    influencer = await analyzeAndSave(freshData, niche, userId);
+                    if (influencer) results.push(influencer);
+                }
+            }
+        }
+        return results;
+    } catch (error) {
+        console.error("TikTok internalSearch Error:", error.message);
+        return [];
+    }
+};
+
+// ── Smart Sync ────────────────────────────────────────────────────────
 exports.syncTikTokData = async (req, res) => {
     try {
         const { username } = req.body;
+        const userId = req.user?.id;  // ✅ logged-in user ka ID
+
         if (!username) return res.status(400).json({ success: false, msg: "Username is required" });
 
         const cleanUsername = username.toLowerCase().trim().replace('@', '');
 
-        // 1. Cache Check
+        // Cache check — 24 hours
         const existing = await Influencer.findOne({ profile_username: cleanUsername });
         if (existing) {
-            const lastUpdated = new Date(existing.last_updated);
-            const hoursSinceUpdate = (new Date() - lastUpdated) / (1000 * 60 * 60);
-            
-            if (hoursSinceUpdate < 24) {
-                return res.json({ 
-                    success: true, 
-                    source: "cache", 
-                    msg: "Data is fresh", 
-                    data: existing 
-                });
+            const hoursSince = (new Date() - new Date(existing.last_updated)) / (1000 * 60 * 60);
+            if (hoursSince < 24) {
+                return res.json({ success: true, source: "cache", data: existing });
             }
         }
 
-        // 2. Fetch Fresh Data
         const freshData = await scrapeTikTokDeep(cleanUsername);
-        if (!freshData) return res.status(404).json({ success: false, msg: "Influencer not found on TikTok" });
+        if (!freshData) return res.status(404).json({ success: false, msg: "Influencer not found" });
 
-        // 3. Update/Create
-        const updated = await Influencer.findOneAndUpdate(
-            { profile_username: cleanUsername },
-            { ...freshData },
-            { upsert: true, new: true, runValidators: true }
-        );
-
-        res.json({ success: true, source: "api_refresh", data: updated });
+        const updated = await analyzeAndSave(freshData, freshData.niche || '', userId);
+        res.json({ success: true, source: "api_refresh_with_ai", data: updated });
 
     } catch (error) {
         console.error("Sync Error:", error.message);
-        res.status(500).json({ success: false, msg: "Failed to sync data" });
+        res.status(500).json({ success: false, msg: "Failed to sync" });
     }
 };
 
-/**
- * FEATURE 2: Niche Search (Upgraded to 7 Deep Scrapes)
- */
+// ── Niche Search ──────────────────────────────────────────────────────
 exports.searchByNiche = async (req, res) => {
     try {
         const { keyword } = req.body;
+        const userId = req.user?.id;  // ✅ logged-in user ka ID
+
         if (!keyword) return res.status(400).json({ success: false, msg: "Keyword required" });
 
         const normalizedKeyword = keyword.trim().toLowerCase();
-        console.log(`🎯 [TikTok Search] Niche: ${normalizedKeyword} | Limit: 7 New Profiles`);
-
-        // Step 1: Search Usernames (1 API Credit)
         const usernames = await searchInfluencersByKeyword(normalizedKeyword);
-        
+
         if (!usernames || usernames.length === 0) {
-            const fallback = await Influencer.find({ 
+            const fallback = await Influencer.find({
                 platform: "TikTok",
-                $or: [
-                    { niche: new RegExp(normalizedKeyword, 'i') },
-                    { nickname: new RegExp(normalizedKeyword, 'i') }
-                ]
+                niche: new RegExp(normalizedKeyword, 'i'),
+                createdBy: userId   // ✅ sirf is user ke influencers
             }).limit(15);
             return res.json({ success: true, source: "database_fallback", data: fallback });
         }
 
         const finalInfluencers = [];
-        let apiRequestsCount = 0;
-        const REQUEST_LIMIT = 7; // 🔥 Bhai, ab har search par 7 naye bande fetch honge!
-
-        // Step 2: Process Usernames
-        for (const user of usernames) {
+        for (const user of usernames.slice(0, 7)) {
             const cleanUser = user.toLowerCase();
-            
-            // Check Database First (Cost: 0)
             let influencer = await Influencer.findOne({ profile_username: cleanUser });
 
-            if (influencer) {
-                finalInfluencers.push(influencer);
-            } 
-            else if (apiRequestsCount < REQUEST_LIMIT) {
-                // New User -> Deep Scrape (Cost: 1 API Credit)
-                const freshData = await scrapeTikTokDeep(cleanUser);
-                
-                if (freshData) {
-                    freshData.niche = normalizedKeyword.charAt(0).toUpperCase() + normalizedKeyword.slice(1);
-                    freshData.platform = "TikTok";
-                    
-                    const saved = await Influencer.findOneAndUpdate(
-                        { profile_username: cleanUser },
-                        freshData,
-                        { upsert: true, new: true }
+            if (influencer && influencer.ai_score > 0) {
+                // Already analyzed — update createdBy agar missing ho
+                if (!influencer.createdBy && userId) {
+                    influencer = await Influencer.findByIdAndUpdate(
+                        influencer._id,
+                        { createdBy: userId },
+                        { new: true }
                     );
-                    finalInfluencers.push(saved);
-                    apiRequestsCount++;
+                }
+                finalInfluencers.push(influencer);
+            } else {
+                const freshData = await scrapeTikTokDeep(cleanUser);
+                if (freshData) {
+                    const saved = await analyzeAndSave(freshData, normalizedKeyword, userId);
+                    if (saved) finalInfluencers.push(saved);
                 }
             }
-
-            // Agar DB se kafi log mil gaye hain aur API se bhi 7 ho gaye, toh break
-            if (finalInfluencers.length >= 15) break;
         }
 
-        // Step 3: Response
-        res.json({
-            success: true,
-            meta: {
-                total_displayed: finalInfluencers.length,
-                newly_scraped: apiRequestsCount,
-                quota_saved: usernames.length - apiRequestsCount,
-                next_update_allowed: "24h"
-            },
-            data: finalInfluencers
-        });
-
+        res.json({ success: true, data: finalInfluencers });
     } catch (error) {
-        console.error("Search Error:", error);
+        console.error("TikTok Search Error:", error.message);
         res.status(500).json({ success: false, msg: "Internal Server Error" });
     }
 };

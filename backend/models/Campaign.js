@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const campaignSchema = new mongoose.Schema({
-    // User ID jo campaign create kar raha hai (Linked to User Model)
     businessId: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User', 
@@ -18,8 +17,8 @@ const campaignSchema = new mongoose.Schema({
     },
     platform: { 
         type: String, 
-        enum: ['Instagram', 'TikTok', 'YouTube', 'Facebook'], 
-        required: true 
+        enum: ['All', 'TikTok', 'YouTube'], 
+        default: 'All' 
     },
     status: { 
         type: String, 
@@ -36,9 +35,22 @@ const campaignSchema = new mongoose.Schema({
     },
     niche: { 
         type: String, 
-        required: [true, 'Niche is required'] // e.g., Fashion, Tech, Food
+        required: [true, 'Niche is required'] 
     },
-    tags: [String]
+    tags: [String],
+
+    // YE WOH AI DATA HAI JO SIRF IS CAMPAIGN KE LIYE SELECTED HAIN
+    // Global Influencer database alag rahega, ye yahan link hoga.
+    selectedInfluencers: [{
+        influencerId: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'Influencer' 
+        },
+        ai_score: Number,
+        ai_summary: String,
+        match_reasoning: String,
+        recommended_at: { type: Date, default: Date.now }
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Campaign', campaignSchema);

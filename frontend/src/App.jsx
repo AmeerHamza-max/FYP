@@ -8,8 +8,10 @@ import CreateCampaign from './pages/campaign/CreateCampaign';
 import EditCampaign from './pages/campaign/EditCampaign';
 import Campaigns from './pages/campaign/Campaigns'; 
 import ViewCampaign from './pages/campaign/ViewCampaign'; 
-// --- INFLUENCER IMPORT ---
+
+// --- INFLUENCER IMPORTS ---
 import Influencers from './pages/Influencer/Influencers'; 
+import InfluencerProfile from './pages/Influencer/InfluencerProfile'; 
 
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
@@ -40,7 +42,6 @@ function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/about-us" element={<AboutUs />} /> 
         <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/analytics" element={<Analytics />} /> 
         <Route path="/contact" element={<Contact />} />
         
         {/* Legal Pages */}
@@ -57,10 +58,20 @@ function App() {
         
         {/* --- Protected Routes --- */}
         
-        {/* 1. INFLUENCERS ROUTE (Jo missing tha) */}
+        {/* ANALYTICS ROUTE (Ab Protected hai taake Auth header mil sake) */}
+        <Route 
+          path="/analytics" 
+          element={<ProtectedRoute><Analytics /></ProtectedRoute>} 
+        />
+
+        {/* INFLUENCERS ROUTES */}
         <Route 
           path="/influencers" 
           element={<ProtectedRoute><Influencers /></ProtectedRoute>} 
+        />
+        <Route 
+          path="/influencer/:id" 
+          element={<ProtectedRoute><InfluencerProfile /></ProtectedRoute>} 
         />
 
         <Route 

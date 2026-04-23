@@ -1,32 +1,61 @@
+/* eslint-disable */
 import API from './client';
 
-// Campaign se related saari API requests yahan se hongi
 const campaignService = {
-    
-    // 1. Saari campaigns fetch karna (with Search, Status, Platform filters)
-    getAllCampaigns: (filters) => {
-        // filters aik object hoga: { search: '', status: '', platform: '' }
-        return API.get('/campaigns', { params: filters });
+
+    // 1. Fetch all campaigns
+    getAllCampaigns: async (filters) => {
+        const response = await API.get('/campaigns', { params: filters });
+        return response.data;
     },
 
-    // 2. Nayi campaign create karna (Form data yahan bhejenge)
-    createCampaign: (campaignData) => {
-        return API.post('/campaigns/create', campaignData);
+    // 2. Create Campaign
+    createCampaign: async (campaignData) => {
+        const response = await API.post('/campaigns/create', campaignData, {
+            timeout: 60000 
+        });
+        return response.data;
     },
 
-    // 3. Single campaign ki details lena (ID ke zariye)
-    getCampaignById: (id) => {
-        return API.get(`/campaigns/${id}`);
+    // 3. Get Single Campaign
+    getCampaignById: async (id) => {
+        const response = await API.get(`/campaigns/${id}`);
+        console.log("DEBUG: Service Raw Response:", response.data);
+        const result = response.data.data || response.data;
+        console.log("DEBUG: Service Normalized Data:", result);
+        return result;
     },
 
-    // 4. Campaign ko update karna
-    updateCampaign: (id, updatedData) => {
-        return API.put(`/campaigns/${id}`, updatedData);
+    // 4. Update Campaign
+    updateCampaign: async (id, updatedData) => {
+        const response = await API.put(`/campaigns/${id}`, updatedData);
+        return response.data;
     },
 
-    // 5. Campaign delete karna
-    deleteCampaign: (id) => {
-        return API.delete(`/campaigns/${id}`);
+    // 5. Update Campaign Status (NEW)
+    updateCampaignStatus: async (id, status) => {
+        const response = await API.patch(`/campaigns/${id}/status`, {
+            status
+        });
+        return response.data;
+    },
+
+    // 6. Delete Campaign
+    deleteCampaign: async (id) => {
+        const response = await API.delete(`/campaigns/${id}`);
+        return response.data;
+    },
+
+    // --- NEW: FETCH ANALYTICS DATA (SIRF YEH ADD KIYA HAI) ---
+    getAnalytics: async () => {
+        try {
+            // Yeh wahi route hai jo humne backend routes mein set kiya tha
+            const response = await API.get('/campaigns/stats/analytics');
+            return response.data; 
+        } catch (error) {
+            console.error("❌ Analytics Service Error:", error.message);
+            throw error;
+        }
     }
 };
 

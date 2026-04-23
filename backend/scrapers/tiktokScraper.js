@@ -24,7 +24,7 @@ const performRequest = async (endpoint, params) => {
           "x-rapidapi-key": apiKeys[i].trim(),
           "x-rapidapi-host": apiHost,
         },
-        timeout: 10000,
+        timeout: 15000, // Timeout thora barha diya hai behtar stability ke liye
       });
 
       return response.data;
@@ -40,32 +40,57 @@ const performRequest = async (endpoint, params) => {
 };
 
 /**
- * Search TikTok Influencers by Keyword (Pakistan Focused)
+ * Search TikTok Influencers (Pakistan Focused & English Usernames Only)
  */
 const searchInfluencersByKeyword = async (keyword) => {
   try {
-    // 🔥 FIX 1: Keyword ko force kiya Pakistan results ke liye
+    // 🔥 FORCE PAKISTAN: Tapping into local results
     const targetedKeyword = keyword.toLowerCase().includes("pakistan") 
       ? keyword 
       : `${keyword} Pakistan`;
 
-    console.log(`📡 Searching TikTok Niche: ${targetedKeyword}`);
+    console.log(`📡 Searching TikTok Pakistan Niche: ${targetedKeyword}`);
 
     const data = await performRequest("/user/search", {
       keywords: targetedKeyword,
-      count: "15", // Thora zyada data mangwaya taake filter kar sakein
+      count: "40", // Zayda data mangwaya taake filtering ke baad achi list bache
     });
 
     const rawList = data?.data?.user_list || [];
-
-    // 🔥 FIX 2: Clean IDs and prevent duplicates
     const uniqueIds = new Set();
+
+    // 🔥 REGEX: Sirf English letters (a-z), numbers (0-9), dots aur underscores allow hain.
+    // Isse Chinese/Arabic aur ajeeb symbols wale accounts nikal jayenge.
+    const englishOnlyRegex = /^[a-zA-Z0-9._]+$/;
+
     rawList.forEach((item) => {
-      const id = item.user?.uniqueId || item.user?.unique_id;
-      if (id) uniqueIds.add(id);
+      const user = item.user;
+      const id = user?.uniqueId || user?.unique_id;
+      const nickname = (user?.nickname || "").toLowerCase();
+      const signature = (user?.signature || "").toLowerCase();
+
+      // 1. Check if username is English-only
+      if (id && englishOnlyRegex.test(id)) {
+        
+        // 2. Strict Pakistan Validation: Bio, Nickname ya Username mein "pk" ya "pakistan" ho
+        const isPakistani = 
+            signature.includes("pakistan") || 
+            signature.includes("pk") || 
+            nickname.includes("pakistan") ||
+            nickname.includes("pk") ||
+            id.toLowerCase().includes("pk");
+
+        if (isPakistani) {
+            uniqueIds.add(id);
+        }
+      }
     });
 
-    return Array.from(uniqueIds);
+    const finalResult = Array.from(uniqueIds);
+    console.log(`✅ Filtered ${finalResult.length} pure Pakistani English profiles.`);
+    
+    return finalResult;
+
   } catch (error) {
     console.error("❌ Search Error:", error.message);
     return [];
@@ -96,21 +121,20 @@ const scrapeTikTokDeep = async (username) => {
     const followers = stats.followerCount || stats.follower_count || 0;
     const likes = stats.heartCount || stats.heart_count || 0;
 
-    // Engagement Formula (Likes / Followers ratio weighted)
+    // Engagement Formula
     const rawEngRate = followers > 0 ? ((likes / followers) * 0.15).toFixed(2) : "0.00";
 
-    // ✅ Final Object consistent with DB Schema
     return {
       profile_username: username.toLowerCase(),
-      profile_url: `https://www.tiktok.com/@${username.toLowerCase()}`, // Crucial for DB Index
+      profile_url: `https://www.tiktok.com/@${username.toLowerCase()}`,
       nickname: userDetails.nickname || username,
-      avatar: userDetails.avatarThumb || userDetails.avatar_medium || userDetails.avatar_thumb || "",
+      avatar: userDetails.avatarThumb || userDetails.avatar_medium || "",
       follower_count: followers,
       video_likes: likes,
-      comment_count: Math.floor(likes * 0.015), // Estimated comments
+      comment_count: Math.floor(likes * 0.015), 
       engagement_rate: `${rawEngRate}%`,
       audience_feedback: parseFloat(rawEngRate) > 5 ? "Highly Active" : "Stable",
-      niche: "General", // Controller will update this
+      niche: "General",
       platform: "TikTok",
       last_updated: new Date(),
     };

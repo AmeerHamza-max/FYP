@@ -12,30 +12,34 @@ export const registerUser = async (userData) => {
     }
 };
 
+
 /**
  * Login User & Save Session
  */
 export const loginUser = async (credentials) => {
     try {
         const response = await client.post('/auth/login', credentials);
-        
+
         if (response.data && response.data.token) {
             localStorage.setItem('token', response.data.token);
+
+            // 🔥 SAFE ENHANCEMENT (IMPORTANT FOR SAAS)
+            // now user will include: plan, campaignsUsed, campaignLimit
             localStorage.setItem('user', JSON.stringify(response.data.user));
         }
+
         return response.data;
     } catch (error) {
         throw error.response ? error.response.data : new Error("Network Error");
     }
 };
 
+
 /**
- * Forgot Password - Token generation request
- * User ka email backend ko bhejta hai taake link generate ho
+ * Forgot Password
  */
 export const forgotPassword = async (email) => {
     try {
-        // Backend expects: { email: "example@mail.com" }
         const response = await client.post('/auth/forgot-password', { email });
         return response.data;
     } catch (error) {
@@ -43,15 +47,14 @@ export const forgotPassword = async (email) => {
     }
 };
 
+
 /**
- * Reset Password - Using token from URL
- * Backend expects PUT request with new password
+ * Reset Password
  */
 export const resetPassword = async (token, newPassword) => {
     try {
-        // Backend route: /auth/reset-password/:token
-        const response = await client.put(`/auth/reset-password/${token}`, { 
-            password: newPassword 
+        const response = await client.put(`/auth/reset-password/${token}`, {
+            password: newPassword
         });
         return response.data;
     } catch (error) {
@@ -59,8 +62,9 @@ export const resetPassword = async (token, newPassword) => {
     }
 };
 
+
 /**
- * Logout Utility
+ * Logout
  */
 export const logoutUser = () => {
     localStorage.removeItem('token');
@@ -68,10 +72,20 @@ export const logoutUser = () => {
     window.location.href = '/login';
 };
 
+
 /**
- * Helper: Get Current User Data
+ * Helper: Get Current User
  */
 export const getCurrentUser = () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+};
+
+
+/**
+ * 🔥 NEW (SAFE ADDITION)
+ * Helper: Update user locally after payment upgrade
+ */
+export const updateLocalUserPlan = (updatedUser) => {
+    localStorage.setItem('user', JSON.stringify(updatedUser));
 };
